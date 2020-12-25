@@ -78,8 +78,8 @@ inline void deserialize(T &res, const nlohmann::json &j) {
             _helpers::is_std_shared_ptr_v<T> ||
             _helpers::is_std_unique_ptr_v<T> ||
             std::is_pointer_v<T>) {
+            using ContainsType = std::remove_reference_t<decltype(*res)>;
             if (!j.is_null()) {
-                using ContainsType = std::remove_reference_t<decltype(*res)>;
                 if constexpr (_helpers::is_std_optional_v<T>) {
                     res.emplace();
                 } else if constexpr (std::is_pointer_v<T>) {
@@ -91,6 +91,12 @@ inline void deserialize(T &res, const nlohmann::json &j) {
                     res = std::make_shared<ContainsType>();
                 }
                 deserialize<std::remove_reference_t<decltype(*res)>, 0>(*res, j);
+            } else {
+                if constexpr (_helpers::is_std_optional_v<T>) {
+                    res = std::optional<ContainsType>();
+                } else {
+                    res = nullptr;
+                }
             }
         } else {
             res = j.get<T>();
@@ -149,7 +155,16 @@ inline void serialize(nlohmann::json &res, const T &obj) {
             auto *p = reinterpret_cast<const typename HelperType::_type *>(
                 reinterpret_cast<const char *>(&obj) + offset
             );
-            serialize<typename HelperType::_type, 0>(res[HelperType::_name], *p);
+            if constexpr (_helpers::is_std_optional_v<typename HelperType::_type> ||
+                _helpers::is_std_shared_ptr_v<typename HelperType::_type> ||
+                _helpers::is_std_unique_ptr_v<typename HelperType::_type> ||
+                std::is_pointer_v<typename HelperType::_type>) {
+                if (*p) {
+                    serialize<typename HelperType::_type, 0>(res[HelperType::_name], *p);
+                }
+            } else {
+                serialize<typename HelperType::_type, 0>(res[HelperType::_name], *p);
+            }
         }
         if constexpr (offset < sizeof(T)) {
             serialize<T, offset + 1>(res, obj);
