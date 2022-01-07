@@ -9,8 +9,8 @@
 #include <memory>
 
 #define JSON_PROPERTY(type, name) type name; \
-    template<class T> \
-    struct _SerializeHelper<offsetof(_selfType, name), T> { \
+    template<class _T> \
+    struct _SerializeHelper<offsetof(_selfType, name), _T> { \
         constexpr static bool _value = 1; \
         constexpr static char _name[] = #name; \
         using _type = type; \
@@ -19,7 +19,7 @@
 
 #define JSON_SERIALIZABLE_STRUCT(_name, ...) struct _name { \
     using _selfType = _name; \
-    template<size_t x, class T> \
+    template<size_t x, class _T> \
     struct _SerializeHelper { const static bool _value = 0; }; \
     __VA_ARGS__ \
 } \
